@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMO Class 3 Practice Test - Mascot Edition</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Confetti Library for celebration effect -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0fdfa; /* Teal-50 background */
+        }
+        .scorecard-panel {
+            position: sticky;
+            top: 100px;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+        .question-card {
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .option-label:hover {
+            background-color: #e5e7eb;
+        }
+        input[type="radio"]:checked + .option-label {
+            background-color: #ccfbf1; /* Cyan-100 */
+            border-color: #14b8a6; /* Cyan-500 */
+            box-shadow: 0 0 0 2px #14b8a6;
+        }
+        .timer-glow {
+            text-shadow: 0 0 15px rgba(251, 191, 36, 0.7); /* Amber glow */
+        }
+        /* Scorecard Status Colors */
+        .status-unanswered { background-color: #fca5a5; /* Red-300 */ color: #991b1b; }
+        .status-answered { background-color: #5eead4; /* Teal-300 */ color: #0f766e; }
+        .status-marked { background-color: #fcd34d; /* Amber-300 */ color: #92400e; border: 2px solid #b45309; }
+        .status-default { background-color: #e5e7eb; /* Gray-200 */ color: #4b5563; }
+        .scorecard-button {
+            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-weight: 600; transition: transform 0.1s;
+        }
+        .scorecard-button:hover {
+            transform: scale(1.05);
+        }
+        /* Modal Backdrop */
+        .modal-backdrop {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background-color: rgba(0, 0, 0, 0.6); z-index: 50; 
+            display: flex; 
+            align-items: center; justify-content: center;
+        }
+        .progress-bar-container {
+            height: 8px; border-radius: 4px; overflow: hidden;
+        }
+        .paper-select-card {
+            transition: all 0.2s;
+            border-color: #0d9488; /* Teal-600 */
+        }
+        .paper-select-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="modal-backdrop hidden">
+        <div class="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full mx-4 transform transition-all">
+            <h3 class="text-2xl font-extrabold text-red-600 mb-4">Confirm Submission</h3>
+            <p class="text-gray-700 mb-6">Are you sure you want to finish the test? You cannot change your answers after submission.</p>
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-submit" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition">Cancel</button>
+                <button id="confirm-submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition">Yes, Finish Test</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading Modal -->
+    <div id="loading-modal" class="modal-backdrop hidden">
+        <div class="bg-white p-8 rounded-xl shadow-2xl max-w-lg w-full mx-4 text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
+            <h3 class="text-2xl font-bold text-teal-700 mb-2">Loading Session...</h3>
+            <p class="text-gray-600">Please wait while we connect to your saved session data.</p>
+        </div>
+    </div>
+
+    <!-- General Error Modal -->
+    <div id="error-modal" class="modal-backdrop hidden">
+        <div class="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full mx-4 transform transition-all">
+            <h3 class="text-2xl font-extrabold text-red-600 mb-4">Error</h3>
+            <p id="error-message" class="text-gray-700 mb-6">An unknown error occurred.</p>
+            <div class="flex justify-end">
+                <button id="reload-selection" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg transition">Return to Paper Selection</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="app" class="max-w-7xl mx-auto p-4 sm:p-6">
+        
+        <!-- Fixed Header Bar for Timer, Progress & Title (Responsive) -->
+        <header class="bg-white sticky top-0 z-20 p-4 rounded-b-xl shadow-2xl flex justify-between items-center border-b-4 border-amber-500">
+            <div class="flex items-center space-x-3">
+                <!-- Brainy Owl Mascot SVG -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-teal-600 hidden sm:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 16.5C20 18.9853 15.5 21 12 21C8.5 21 4 18.9853 4 16.5C4 14.0147 7.58172 12 12 12C16.4183 12 20 14.0147 20 16.5Z" fill="currentColor" opacity="0.1"></path>
+                    <path d="M12 5L7 11.5L12 18L17 11.5L12 2Z" fill="currentColor" opacity="0.3"></path>
+                    <path d="M12 2L4 12V16.5C4 18.9853 7.58172 21 12 21C16.4183 21 20 18.9853 20 16.5V12L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                    <path d="M10 8L14 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                    <path d="M10 16L14 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+                <h1 class="text-xl sm:text-2xl font-extrabold text-gray-800">IMO Class 3 Practice</h1>
+            </div>
+            <div id="timer-container" class="flex flex-col items-center">
+                <p class="text-sm font-semibold text-gray-600">Time Left</p>
+                <div id="timer" class="text-3xl sm:text-4xl font-mono font-bold text-amber-600 timer-glow">
+                    60:00
+                </div>
+            </div>
+        </header>
+
+        <!-- Progress Bar and Global Info -->
+        <div class="mt-4 text-center text-gray-600 text-sm">
+            Total Questions: 35 | Total Marks: 40 | Time Allotted: 60 Minutes
+        </div>
+        <div class="mt-4 mb-8 bg-white p-4 rounded-xl shadow">
+             <div class="flex justify-between items-center mb-1">
+                 <p class="text-sm font-medium text-gray-700">Test Progress</p>
+                 <p id="progress-text" class="text-sm font-semibold text-teal-600">0% (0/35)</p>
+             </div>
+             <div class="progress-bar-container bg-gray-200">
+                 <div id="progress-bar" class="h-full bg-teal-500 transition-all duration-500" style="width: 0%;"></div>
+             </div>
+        </div>
+
+
+        <!-- Start Screen & Paper Selection -->
+        <div id="start-screen" class="mt-12 p-8 sm:p-12 bg-white rounded-3xl shadow-xl border-t-8 border-teal-600 text-center z-10">
+            <h2 class="text-3xl font-extrabold text-teal-700 mb-4">Select Your Practice Paper</h2>
+            <p class="text-lg text-gray-600 mb-8">
+                Choose one of the 10 unique hardcoded papers below. Your progress and high score will be saved automatically.
+            </p>
+            
+            <div id="paper-selection-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                <!-- Paper selection cards will be rendered here -->
+            </div>
+
+            <div id="auth-status" class="mt-8 text-sm text-gray-500">
+                Connecting to secure session...
+            </div>
+        </div>
+        
+        <!-- Main Test Grid (Initially Hidden) -->
+        <div id="test-grid" class="mt-8 grid grid-cols-1 lg:grid-cols-4 gap-6 hidden">
+            
+            <!-- Questions Column -->
+            <div class="lg:col-span-3">
+                <form id="imo-test-form" class="space-y-6">
+                    <!-- Questions will be rendered here by JavaScript -->
+                </form>
+
+                <!-- Submission and Results Area (Rendered after questions) -->
+                <div id="submission-area" class="mt-8">
+                    <div id="message-box" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative my-6" role="alert">
+                        <strong class="font-bold">Time's Up!</strong>
+                        <span class="block sm:inline">The test has ended.</span>
+                    </div>
+                    <button type="button" id="submit-button" class="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white text-xl font-bold rounded-xl transition duration-200 shadow-lg">
+                        Finish Test & View Score
+                    </button>
+                    <div id="score-result" class="mt-8 p-6 bg-amber-50 rounded-xl border border-amber-300 hidden"></div>
+                </div>
+            </div>
+
+            <!-- Scorecard Column (Right Sidebar) -->
+            <div class="lg:col-span-1">
+                <div class="scorecard-panel bg-white p-4 rounded-xl shadow-lg border border-gray-200">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Question Navigation</h3>
+                    <div id="scorecard-buttons" class="grid grid-cols-5 gap-2">
+                        <!-- Scorecard buttons rendered here -->
+                    </div>
+
+                    <h3 class="text-lg font-bold text-gray-800 mt-6 mb-3 border-b pb-2">Status Legend</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center"><span class="scorecard-button status-answered mr-2">A</span> Answered</div>
+                        <div class="flex items-center"><span class="scorecard-button status-unanswered mr-2">U</span> Unanswered</div>
+                        <div class="flex items-center"><span class="scorecard-button status-marked mr-2">M</span> Marked for Review</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FIREBASE IMPORTS (REQUIRED) -->
+        <script type="module">
+            import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+            import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+            import { getFirestore, doc, getDoc, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+            
+            // Log for debugging
+            setLogLevel('Debug');
+
+            // --- MANUAL REPLACEMENT FOR GITHUB/EXTERNAL HOSTING (REQUIRED) ---
+            // !!! YOU MUST REPLACE ALL "YOUR_..." PLACEHOLDERS WITH YOUR REAL FIREBASE KEYS !!!
+            const firebaseConfig = {
+              apiKey: "AIzaSyDhA2aJwvSjKPvuyMdnyPE03hcT25qbg5k", // <-- 1. PASTE YOUR API KEY HERE
+              authDomain: "imo-practice-app-e502b.firebaseapp.com", // <-- 2. PASTE YOUR AUTH DOMAIN HERE
+              projectId: "imo-practice-app-e502b", // <-- 3. PASTE YOUR PROJECT ID HERE
+              storageBucket: "imo-practice-app-e502b.firebasestorage.app", // <-- 4. PASTE YOUR STORAGE BUCKET HERE
+              messagingSenderId: "512061955221", // <-- 5. PASTE YOUR SENDER ID HERE
+              appId: "1:512061955221:web:a2472ada556fd587e54f9c" // <-- 6. PASTE YOUR APP ID HERE
+            };
+            
+            // For GitHub deployment, we use the projectId as the unique app identifier (appId) 
+            // and force anonymous authentication by setting the custom token to null.
+            const appId = firebaseConfig.projectId; 
+            const initialAuthToken = null; 
+            // --- END MANUAL REPLACEMENT ---
+
+            let db, auth, userId = null;
+            let currentTestId = null; 
+            const TOTAL_MARKS = 40;
+
+            // --- Firebase Initialization and Auth ---
+            async function initializeFirebase() {
+                try {
+                    // Check if configuration is missing (only for external hosting)
+                    if (firebaseConfig.apiKey === "YOUR_API_KEY_HERE" || !firebaseConfig.projectId) {
+                        document.getElementById('auth-status').textContent = "ERROR: Firebase Config is missing! Please replace placeholders in the code.";
+                        window.showErrorModal("Firebase Setup Required: Please edit the code file and replace all 'YOUR_...' placeholders with your actual keys from the Firebase Console.");
+                        return;
+                    }
+
+
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                    
+                    const authStatusDiv = document.getElementById('auth-status');
+                    authStatusDiv.textContent = "Authenticating...";
+
+                    await new Promise(resolve => {
+                        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                            if (user) {
+                                userId = user.uid;
+                                authStatusDiv.textContent = `Connected (User ID: ${userId.substring(0, 8)}...)`;
+                            } else {
+                                try {
+                                    if (initialAuthToken) {
+                                        await signInWithCustomToken(auth, initialAuthToken);
+                                    } else {
+                                        // Standard Anonymous Sign-in for GitHub deployment
+                                        await signInAnonymously(auth);
+                                    }
+                                } catch (error) {
+                                    console.error("Firebase Auth Error:", error);
+                                    authStatusDiv.textContent = "Error: Authentication failed.";
+                                }
+                            }
+                            if (userId) {
+                                unsubscribe();
+                                resolve();
+                            }
+                        });
+                    });
+
+                    if (!userId) userId = auth.currentUser?.uid || crypto.randomUUID();
+
+                    window.firebaseInitialized = true;
+                    window.dispatchEvent(new Event('firebaseReady'));
+
+                } catch (error) {
+                    console.error("Firebase Initialization Failed:", error);
+                    window.showErrorModal("Firebase initialization failed. Check your configuration or network connection.");
+                }
+            }
+
+            // --- Firestore Persistence Functions ---
+            const getDocPath = () => {
+                if (!userId) { console.error("Attempt to access DB before userId is set."); return null; }
+                if (!currentTestId) { console.error("Attempt to access DB before currentTestId is set."); return null; }
+                return doc(db, `/artifacts/${appId}/users/${userId}/imo_test_sessions/${currentTestId}`);
+            }
+            
+            // New simplified state saving - ONLY saves session data (time, answers, review)
+            window.saveStateToCloud = async (state) => {
+                const docPath = getDocPath();
+                if (!db || !docPath) return;
+                try {
+                    const stateToSave = { 
+                        timeInSeconds: state.timeInSeconds,
+                        userAnswers: state.userAnswers,
+                        markedForReview: state.markedForReview
+                    };
+                    await setDoc(docPath, stateToSave, { merge: true });
+                } catch (e) {
+                    console.error("Error saving state:", e);
+                }
+            };
+
+            window.loadStateFromCloud = async (testId) => {
+                if (!db || !userId) return null;
+                currentTestId = testId;
+                const docPath = getDocPath();
+                if (!docPath) return null;
+
+                try {
+                    const docSnap = await getDoc(docPath);
+                    if (docSnap.exists() && docSnap.data().completed !== true) {
+                        return docSnap.data();
+                    }
+                    return null;
+                } catch (e) {
+                    console.error("Error loading state:", e);
+                    return null;
+                }
+            };
+
+            window.clearCloudState = async () => {
+                const docPath = getDocPath();
+                if (!db || !docPath) return;
+                try {
+                    await setDoc(docPath, { completed: true, deletedTimestamp: Date.now() }, { merge: true });
+                } catch (e) {
+                    console.error("Error clearing state:", e);
+                }
+            };
+
+            // --- High Score Persistence Functions (Separate for stability) ---
+            
+            // Retrieves the highest score for a given paper
+            window.getHighScoreFromCloud = async (paperNumber) => {
+                if (!db || !userId) return 0;
+                const docPath = doc(db, `/artifacts/${appId}/users/${userId}/high_scores`, `paper_${paperNumber}`);
+                try {
+                    const docSnap = await getDoc(docPath);
+                    if (docSnap.exists()) {
+                        return docSnap.data().highScore || 0;
+                    }
+                    return 0;
+                } catch (e) {
+                    console.error("Error loading high score:", e);
+                    return 0;
+                }
+            };
+
+            // Updates the high score if the current score is higher
+            window.updateHighScoreInCloud = async (paperNumber, currentScore) => {
+                if (!db || !userId) return;
+                const docPath = doc(db, `/artifacts/${appId}/users/${userId}/high_scores`, `paper_${paperNumber}`);
+                
+                try {
+                    const currentHighScore = await window.getHighScoreFromCloud(paperNumber);
+
+                    if (currentScore > currentHighScore) {
+                        await setDoc(docPath, { highScore: currentScore, lastUpdated: Date.now() }, { merge: true });
+                        return currentScore;
+                    }
+                    return currentHighScore;
+
+                } catch (e) {
+                    console.error("Error updating high score:", e);
+                    // Return the calculated current score if cloud update fails, 
+                    // though for this external hosting scenario, it's safer to return the existing cloud score.
+                    return currentHighScore; 
+                }
+            };
+
+            initializeFirebase();
+        </script>
+        
+        
+        <!-- MAIN APPLICATION LOGIC -->
+        <script>
+            // Constants
+            const TOTAL_TIME_SECONDS = 60 * 60; // 60 minutes
+            const TOTAL_QUESTIONS = 35;
+            
+            // State variables
+            let timeInSeconds = TOTAL_TIME_SECONDS;
+            let timerInterval;
+            let isTestRunning = false;
+            let questions = []; 
+            let userAnswers = {};
+            let markedForReview = {};
+            let selectedPaper = null; 
+
+            // DOM Elements
+            const timerDisplay = document.getElementById('timer');
+            const messageBox = document.getElementById('message-box');
+            const progressText = document.getElementById('progress-text');
+            const progressBar = document.getElementById('progress-bar');
+            const errorModal = document.getElementById('error-modal');
+            const errorMessageDisplay = document.getElementById('error-message');
+            const TOTAL_MARKS = 40;
+
+
+            // --- Confetti Effect ---
+            function fireConfetti(scorePercentage) {
+                if (window.confetti) {
+                    // Less intense confetti for lower scores, more intense for higher scores
+                    const intensity = Math.max(0.5, scorePercentage / 100);
+                    const count = Math.min(200, Math.floor(200 * intensity));
+
+                    window.confetti({
+                        particleCount: count,
+                        spread: 180,
+                        origin: { y: 0.6 },
+                        colors: ['#0d9488', '#f59e0b', '#ef4444', '#f0fdfa'] // Teal, Amber, Red, White
+                    });
+                }
+            }
+
+
+            // --- Modal/Error Handlers ---
+            window.showErrorModal = (message) => {
+                errorMessageDisplay.textContent = message;
+                errorModal.classList.remove('hidden');
+                
+                // Stop the timer if it's running
+                clearInterval(timerInterval);
+                isTestRunning = false;
+            };
+
+            function returnToSelection() {
+                errorModal.classList.add('hidden');
+                document.getElementById('start-screen').classList.remove('hidden');
+                document.getElementById('test-grid').classList.add('hidden');
+                window.location.reload(); // Simplest way to reset state and re-render selection grid
+            }
+
+            // --- Data Structure (Paper 1 - Fixed Hand-written questions - INDIAN CONVENTIONS APPLIED) ---
+            const paper1Questions = [
+                { id: 1, section: "Logical Reasoning", text: "Find the next term in the series: 5, 10, 15, 20, ?", options: ["25", "30", "40", "45"], answer: "A" },
+                { id: 2, section: "Logical Reasoning", text: "Which number replaces the question mark (?) in the second pair? Book : Read :: Spoon : ?", options: ["Plate", "Eat", "Drink", "Fork"], answer: "B" },
+                { id: 3, section: "Logical Reasoning", text: "If 'Pencil' is coded as '25', and 'Pen' is coded as '3', then what is 'Eraser' coded as? (Count the number of letters.)", options: ["4", "6", "8", "10"], answer: "B" }, 
+                { id: 4, section: "Logical Reasoning", text: "Which of the following figures has exactly 4 sides?", options: ["Triangle", "Circle", "Square", "Pentagon"], answer: "C" },
+                { id: 5, section: "Logical Reasoning", text: "Look at the pattern. How many circles will be in the next figure? (1) 2 circles, (2) 4 circles, (3) 6 circles, (4) ? circles", options: ["7", "8", "9", "10"], answer: "B" },
+                { id: 6, section: "Logical Reasoning", text: "If the day before yesterday was Saturday, what is the day after tomorrow?", options: ["Monday", "Tuesday", "Wednesday", "Thursday"], answer: "C" },
+                { id: 7, section: "Logical Reasoning", text: "Which shape is missing in the following sequence? Circle, Triangle, Square, Circle, Triangle, ?, Circle", options: ["Triangle", "Circle", "Square", "Rectangle"], answer: "C" },
+                { id: 8, section: "Logical Reasoning", text: "Choose the figure that is the mirror image of the given figure (the dotted line is the mirror). (Imagine the letter R)", options: ["R", "Я", "\\/", "P"], answer: "B" },
+                { id: 9, section: "Logical Reasoning", text: "Which collection of numbers is arranged in descending order?", options: ["123, 321, 213", "321, 213, 123", "213, 321, 123", "123, 213, 321"], answer: "B" },
+                { id: 10, section: "Logical Reasoning", text: "How many straight lines are there in the letter 'H'?", options: ["2", "3", "4", "5"], answer: "B" },
+                { id: 11, section: "Mathematical Reasoning", text: "The expanded form of 906 is:", options: ["$900 + 60 + 0$", "$900 + 0 + 6$", "$9 + 0 + 6$", "$90 + 6$"], answer: "B" },
+                { id: 12, section: "Mathematical Reasoning", text: "What is the value of $5 \\times 7 - 10$?", options: ["35", "25", "45", "30"], answer: "B" },
+                { id: 13, section: "Mathematical Reasoning", text: "Which Roman numeral represents the number 14?", options: ["XIV", "IXV", "XC", "XL"], answer: "A" },
+                { id: 14, section: "Mathematical Reasoning", text: "What is the sum of the greatest 2-digit number and the smallest 3-digit number?", options: ["1000", "109", "199", "999"], answer: "C" },
+                { id: 15, section: "Mathematical Reasoning", text: "Which of the following shows the correct fraction for the shaded part? (Imagine a square divided into 4 equal parts with 3 parts shaded.)", options: ["$\\frac{1}{4}$", "$\\frac{4}{3}$", "$\\frac{3}{4}$", "$\\frac{1}{3}$"], answer: "C" },
+                { id: 16, section: "Mathematical Reasoning", text: "Find the missing digit: $4 \\text{_} 5 \\times 3 = 1365$", options: ["1", "2", "5", "3"], answer: "C" },
+                { id: 17, section: "Mathematical Reasoning", text: "A triangle has ___ corners (vertices).", options: ["2", "3", "4", "5"], answer: "B" },
+                { id: 18, section: "Mathematical Reasoning", text: "How many groups of 4 can be made from 32 objects?", options: ["6", "7", "8", "9"], answer: "C" },
+                { id: 19, section: "Mathematical Reasoning", text: "Which number comes exactly between 450 and 460?", options: ["456", "455", "454", "458"], answer: "B" },
+                { id: 20, section: "Mathematical Reasoning", text: "What is $400 - 150$?", options: ["200", "350", "250", "150"], answer: "C" },
+                { id: 21, section: "Everyday Mathematics", text: "Riya bought 3 packets of stickers. Each packet had 12 stickers. How many stickers does Riya have in total?", options: ["15", "24", "36", "48"], answer: "C" },
+                { id: 22, section: "Everyday Mathematics", text: "A bus leaves the station at 9:30 AM and takes 45 minutes to reach its destination. At what time will it reach?", options: ["10:00 AM", "10:15 AM", "10:45 AM", "11:00 AM"], answer: "B" },
+                { id: 23, section: "Everyday Mathematics", text: "If a bottle of juice costs ₹25 and Rohan buys 4 bottles, how much money does he spend?", options: ["₹50", "₹75", "₹100", "₹125"], answer: "C" },
+                { id: 24, section: "Everyday Mathematics", text: "A baker baked 75 cookies. He sold 48 cookies. How many cookies are left with him?", options: ["27", "37", "123", "33"], answer: "A" },
+                { id: 25, section: "Everyday Mathematics", text: "Rahul is 8 years old. His father is 4 times his age. How old is Rahul's father?", options: ["12 years", "28 years", "32 years", "40 years"], answer: "C" },
+                { id: 26, section: "Everyday Mathematics", text: "A rope is 8 meters long. If it is cut into 2 equal pieces, what is the length of each piece?", options: ["2 meters", "4 meters", "6 meters", "8 meters"], answer: "B" },
+                { id: 27, section: "Everyday Mathematics", text: "Sam's school starts at 7:45 AM. He needs 15 minutes to walk to school. What is the latest time he should leave home?", options: ["7:15 AM", "7:30 AM", "7:45 AM", "8:00 AM"], answer: "B" },
+                { id: 28, section: "Everyday Mathematics", text: "A shopkeeper had 28 red apples and 35 green apples. How many apples did he have in total?", options: ["63", "53", "73", "83"], answer: "A" },
+                { id: 29, section: "Everyday Mathematics", text: "A dozen eggs cost ₹72. If there are 12 eggs in a dozen, what is the cost of one egg?", options: ["₹6", "₹7", "₹8", "₹9"], answer: "A" },
+                { id: 30, section: "Everyday Mathematics", text: "Sara has ₹100. She wants to buy a toy car that costs ₹85. How much money will she have left?", options: ["₹25", "₹15", "₹85", "₹10"], answer: "B" },
+                { id: 31, section: "Achievers Section", text: "Which of the following statements is TRUE?", options: ["$20 \\div 5 = 4$ is the same as $5 \\times 4 = 20$.", "The place value of 7 in 573 is 700.", "The greatest 3-digit number is 998.", "All squares are triangles."], answer: "A" },
+                { id: 32, section: "Achievers Section", text: "Neha has a number of pencils. If she divides them into groups of 6, she has 2 pencils left over. Which of the following could be the number of pencils Neha has?", options: ["36", "40", "44", "50"], answer: "D" },
+                { id: 33, section: "Achievers Section", text: "Which symbol should be placed in the box to make the statement true? $$(15 \\times 2) - 10 \\text{ \_ } (50 \\div 5) + 5$$", options: [">", "<", "=", "$\\le$"], answer: "B" },
+                { id: 34, section: "Achievers Section", text: "A fruit seller has 4 boxes of oranges. Each box has 25 oranges. If he sells 60 oranges, how many oranges are left?", options: ["100", "40", "60", "160"], answer: "B" },
+                { id: 35, section: "Achievers Section", text: "Arrange the following measurements in ascending order (smallest to largest): (i) $2 \\text{ meters}$ (ii) $150 \\text{ centimeters}$ (iii) $3 \\text{ kilometers}$", options: ["(iii), (ii), (i)", "(ii), (i), (iii)", "(i), (ii), (iii)", "(i), (iii), (ii)"], answer: "B" }
+            ];
+            
+            const sectionTitles = {
+                "Logical Reasoning": "Section 1: Logical Reasoning (1 Mark Each)",
+                "Mathematical Reasoning": "Section 2: Mathematical Reasoning (1 Mark Each)",
+                "Everyday Mathematics": "Section 3: Everyday Mathematics (1 Mark Each)",
+                "Achievers Section": "Section 4: Achievers Section (3 Marks Each)"
+            };
+
+            // --- Hardcoded Placeholder Data Generator (for Papers 2-10) ---
+            function generatePlaceholderPaper(paperNumber) {
+                const questions = [];
+                let qid = 1;
+                const seed = paperNumber * 100;
+                
+                const names = ['Priya', 'Arjun', 'Sonia', 'Ravi', 'Leena', 'Karan'];
+
+                // 1. Logical Reasoning (10 Qs)
+                for (let i = 0; i < 10; i++, qid++) {
+                    const seriesStart = seed + i * 5;
+                    questions.push({
+                        id: qid,
+                        section: "Logical Reasoning",
+                        text: `Find the next number in the series: ${seriesStart}, ${seriesStart + 2}, ${seriesStart + 4}, ${seriesStart + 6}, ?`,
+                        options: [(seriesStart + 7).toString(), (seriesStart + 8).toString(), (seriesStart + 9).toString(), (seriesStart + 10).toString()],
+                        answer: "B"
+                    });
+                }
+                
+                // 2. Mathematical Reasoning (10 Qs)
+                for (let i = 0; i < 10; i++, qid++) {
+                    const number = 500 + seed + i;
+                    questions.push({
+                        id: qid,
+                        section: "Mathematical Reasoning",
+                        text: `What is the place value of the digit ${(i % 3) + 1} in the number $${number} + ${i + 10}$?`,
+                        options: ['Tens', 'Hundreds', 'Ones', 'Thousands'],
+                        answer: ['Tens', 'Hundreds', 'Ones'][i % 3 === 0 ? 0 : i % 3 === 1 ? 1 : 2] === 'Hundreds' ? 'B' : (['Tens', 'Hundreds', 'Ones'][i % 3 === 0 ? 0 : i % 3 === 1 ? 1 : 2] === 'Tens' ? 'A' : 'C')
+                    });
+                }
+
+                // 3. Everyday Mathematics (10 Qs) - Uses ₹
+                for (let i = 0; i < 10; i++, qid++) {
+                    const name = names[i % names.length];
+                    const cost = 10 + (paperNumber * 2) + i;
+                    const items = (i % 3) + 3;
+                    const totalCost = cost * items;
+
+                    questions.push({
+                        id: qid,
+                        section: "Everyday Mathematics",
+                        text: `${name} bought ${items} pens. Each pen costs ₹${cost}. How much money did ${name} spend in total?`,
+                        options: [`₹${totalCost - 5}`, `₹${totalCost}`, `₹${totalCost + 10}`, `₹${totalCost + items}`],
+                        answer: "B"
+                    });
+                }
+
+                // 4. Achievers Section (5 Qs)
+                for (let i = 0; i < 5; i++, qid++) {
+                    const base = 200 + paperNumber * 10 + i;
+                    // Note: Simplified logic to avoid complex calculations in the client but maintain uniqueness
+                    questions.push({
+                        id: qid,
+                        section: "Achievers Section",
+                        text: `What is the value of $(200 + 10 \\times ${paperNumber}) + (5 \\times 8) - (100 + ${paperNumber * 5})$?`,
+                        options: ['100', '120', '140', '160'], // Simplified options
+                        answer: ['A', 'B', 'C', 'D'][i % 4]
+                    });
+                }
+                return questions;
+            }
+
+            // --- Master function to get questions for any paper ---
+            function getPaperQuestions(paperNumber) {
+                if (paperNumber === 1) {
+                    return paper1Questions;
+                }
+                if (paperNumber >= 2 && paperNumber <= 10) {
+                    return generatePlaceholderPaper(paperNumber);
+                }
+                return []; // Should not happen
+            }
+
+
+            // --- UI Helpers (Unchanged) ---
+
+            function updateProgressBar() {
+                const answeredCount = Object.keys(userAnswers).filter(key => userAnswers[key] !== null).length;
+                const percentage = Math.round((answeredCount / TOTAL_QUESTIONS) * 100);
+                
+                progressBar.style.width = `${percentage}%`;
+                progressText.textContent = `${percentage}% (${answeredCount}/${TOTAL_QUESTIONS})`;
+                
+                if (percentage > 80) progressBar.classList.replace('bg-teal-500', 'bg-green-500');
+                else if (percentage > 40) progressBar.classList.replace('bg-green-500', 'bg-teal-500');
+                else progressBar.classList.replace('bg-green-500', 'bg-teal-500');
+            }
+            
+            function getQuestionStatus(qid) {
+                const qName = `q${qid}`;
+                if (markedForReview[qName] === true) {
+                    return 'status-marked';
+                }
+                if (userAnswers[qName] !== undefined && userAnswers[qName] !== null) {
+                    return 'status-answered';
+                }
+                return 'status-unanswered';
+            }
+            
+            function updateQuestionStatus(qid) {
+                const statusClass = getQuestionStatus(qid);
+                const button = document.querySelector(`#scorecard-buttons .scorecard-button[data-qid="${qid}"]`);
+                if (button) {
+                    // Reset all status classes and apply the new one
+                    button.classList.remove('status-unanswered', 'status-answered', 'status-marked', 'status-default');
+                    button.classList.add(statusClass);
+                }
+            }
+
+            function renderScorecard() {
+                const scorecardDiv = document.getElementById('scorecard-buttons');
+                let html = '';
+
+                questions.forEach(q => {
+                    const statusClass = getQuestionStatus(q.id);
+                    html += `
+                        <a href="#q${q.id}" class="scorecard-button ${statusClass}" data-qid="${q.id}" title="${q.section} Question ${q.id}">
+                            ${q.id}
+                        </a>
+                    `;
+                });
+                scorecardDiv.innerHTML = html;
+            }
+
+            function generateQuestionHTML(q) {
+                const optionLabels = ['A', 'B', 'C', 'D'];
+                const savedAnswer = userAnswers[`q${q.id}`] || null;
+                const isMarked = markedForReview[`q${q.id}`] === true;
+
+                let optionsHTML = q.options.map((option, index) => {
+                    const optionValue = optionLabels[index];
+                    const isChecked = savedAnswer === optionValue ? 'checked' : '';
+                    return `
+                        <div class="flex items-center space-x-3">
+                            <input id="q${q.id}_${optionValue}" type="radio" name="q${q.id}" value="${optionValue}" ${isChecked} class="hidden">
+                            <label for="q${q.id}_${optionValue}" class="option-label w-full p-3 rounded-xl border-2 border-gray-300 transition duration-150 ease-in-out cursor-pointer text-gray-700 bg-white">
+                                <span class="font-semibold text-sm mr-2 text-teal-600">${optionValue})</span>
+                                ${option}
+                            </label>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div id="question-${q.id}" class="question-card bg-white p-6 rounded-2xl shadow-md border-t-4 border-teal-500" data-section="${q.section}">
+                        <a id="q${q.id}" class="block invisible relative top-[-100px]"></a>
+                        <p class="text-lg font-bold text-gray-800 mb-4">
+                            Q${q.id}. <span class="font-normal text-base text-teal-700">(${q.section.includes('Achievers') ? '3 Marks' : '1 Mark'})</span> ${q.text}
+                        </p>
+                        <div class="space-y-3 mb-4">
+                            ${optionsHTML}
+                        </div>
+                        <div class="flex justify-end">
+                            <label class="inline-flex items-center cursor-pointer text-sm font-medium ${isMarked ? 'text-amber-700' : 'text-gray-500'}">
+                                <input type="checkbox" id="mark-review-${q.id}" class="form-checkbox h-5 w-5 text-amber-500 rounded border-gray-300 focus:ring-amber-400 mark-review-checkbox" data-qid="${q.id}" ${isMarked ? 'checked' : ''}>
+                                <span class="ml-2">Mark for Review</span>
+                            </label>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function handleFormChange(event) {
+                const target = event.target;
+                const qid = parseInt(target.name ? target.name.substring(1) : target.dataset.qid);
+                const qName = `q${qid}`;
+
+                if (target.type === 'radio' && target.name.startsWith('q')) {
+                    userAnswers[target.name] = target.value;
+                    markedForReview[qName] = false; 
+                    const reviewCheckbox = document.getElementById(`mark-review-${qid}`);
+                    if (reviewCheckbox) reviewCheckbox.checked = false;
+                } else if (target.id.startsWith('mark-review-')) {
+                    markedForReview[qName] = target.checked;
+                }
+                updateQuestionStatus(qid);
+                updateProgressBar();
+                
+                // Only save answers and time, question data is static
+                window.saveStateToCloud({ timeInSeconds, userAnswers, markedForReview });
+            }
+
+            function renderTestContent() {
+                const form = document.getElementById('imo-test-form');
+                let currentSection = "";
+                let html = '';
+                
+                questions.forEach(q => {
+                    if (q.section !== currentSection) {
+                        html += `<div class="mt-10 mb-4"><h2 class="text-xl font-extrabold text-teal-700 border-b-2 border-teal-300 pb-2">${sectionTitles[q.section]}</h2></div>`;
+                        currentSection = q.section;
+                    }
+                    html += generateQuestionHTML(q);
+                });
+
+                form.innerHTML = html;
+                renderScorecard();
+                updateProgressBar();
+
+                // Clear previous listeners and add new one
+                form.removeEventListener('change', handleFormChange);
+                form.addEventListener('change', handleFormChange);
+            }
+
+            // --- Timer Logic ---
+            function updateTimer() {
+                if (timeInSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    isTestRunning = false;
+                    timerDisplay.textContent = "TIME OVER";
+                    timerDisplay.classList.remove('text-amber-600');
+                    timerDisplay.classList.add('text-red-600');
+                    
+                    handleSubmit(true); 
+                    return;
+                }
+
+                const minutes = Math.floor(timeInSeconds / 60);
+                const seconds = timeInSeconds % 60;
+
+                timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+                if (timeInSeconds <= 300) { 
+                     timerDisplay.classList.add('text-red-500');
+                     timerDisplay.classList.remove('text-amber-600');
+                } else {
+                     timerDisplay.classList.add('text-amber-600');
+                     timerDisplay.classList.remove('text-red-500');
+                }
+                
+                timeInSeconds--;
+
+                if (timeInSeconds % 30 === 0) {
+                    // Only save answers and time, question data is static
+                    window.saveStateToCloud({ timeInSeconds, userAnswers, markedForReview });
+                }
+            }
+            
+            // --- Core App Flow ---
+            async function initializeTestUI(paperNumber, useSavedState) {
+                if (!window.firebaseInitialized) {
+                    window.showErrorModal("Authentication is not ready. Please wait a moment and try again.");
+                    return;
+                }
+
+                selectedPaper = paperNumber;
+                currentTestId = `imo_paper_${paperNumber}_session`;
+
+                const startScreen = document.getElementById('start-screen');
+                const testGrid = document.getElementById('test-grid');
+                
+                startScreen.classList.add('hidden');
+                testGrid.classList.remove('hidden');
+                
+                // Get the static questions for the selected paper
+                questions = getPaperQuestions(paperNumber);
+
+
+                let state = null;
+                if (useSavedState) {
+                     state = await window.loadStateFromCloud(currentTestId);
+                }
+
+                if (state) {
+                    // Resume existing state
+                    timeInSeconds = state.timeInSeconds || TOTAL_TIME_SECONDS;
+                    userAnswers = state.userAnswers || {};
+                    markedForReview = state.markedForReview || {};
+                } else {
+                    // Start New Test 
+                    timeInSeconds = TOTAL_TIME_SECONDS;
+                    userAnswers = {};
+                    markedForReview = {};
+                    await window.clearCloudState();
+                    // Initial state is saved (only time/answers)
+                    window.saveStateToCloud({ timeInSeconds, userAnswers, markedForReview });
+                }
+
+                updateTimer(); 
+                renderTestContent();
+
+                // Clear existing listeners before adding new ones
+                const submitButton = document.getElementById('submit-button');
+                submitButton.removeEventListener('click', showConfirmationModal);
+                submitButton.addEventListener('click', showConfirmationModal);
+                
+                isTestRunning = true;
+                timerInterval = setInterval(updateTimer, 1000);
+            }
+            
+            function showConfirmationModal() {
+                document.getElementById('confirmation-modal').classList.remove('hidden');
+            }
+
+            function hideConfirmationModal() {
+                document.getElementById('confirmation-modal').classList.add('hidden');
+            }
+
+            function handleConfirmedSubmit() {
+                 hideConfirmationModal();
+                 handleSubmit(false);
+            }
+
+            async function handleSubmit(timedOut) {
+                if (!isTestRunning && !timedOut && !document.getElementById('submit-button').disabled) return; 
+                isTestRunning = false;
+                window.clearCloudState(); 
+
+                let totalScore = 0;
+                let correctCount = 0;
+                const submitButton = document.getElementById('submit-button'); 
+
+                clearInterval(timerInterval);
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.textContent = timedOut ? "Time Expired - Results Shown" : "Test Completed";
+                    submitButton.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-500', 'hover:bg-gray-500');
+                    submitButton.classList.remove('bg-orange-500', 'hover:bg-orange-600');
+                }
+                
+                if (timedOut) {
+                    messageBox.classList.remove('hidden');
+                }
+
+                questions.forEach(q => {
+                    const qid = `q${q.id}`;
+                    const selectedAnswer = userAnswers[qid]; 
+                    const questionCard = document.getElementById(`question-${q.id}`);
+                    
+                    if (selectedAnswer) {
+                        const isCorrect = selectedAnswer === q.answer;
+                        const score = q.section.includes('Achievers') ? 3 : 1;
+
+                        if (isCorrect) {
+                            totalScore += score;
+                            correctCount++;
+                        }
+                        
+                        // Highlight selected answer
+                        const selectedInput = document.getElementById(`${qid}_${selectedAnswer}`);
+                        const selectedLabel = selectedInput ? selectedInput.nextElementSibling : null;
+
+                        if (selectedLabel) {
+                            selectedLabel.classList.add(isCorrect ? 'bg-green-200' : 'bg-red-200');
+                            selectedLabel.classList.add(isCorrect ? 'border-green-600' : 'border-red-600');
+                            selectedLabel.classList.remove('border-gray-300'); // Remove default border
+                        }
+                    }
+
+                    // Highlight correct answer (always)
+                    const correctInputId = `${qid}_${q.answer}`;
+                    const correctLabel = document.querySelector(`label[for="${correctInputId}"]`);
+                    if (correctLabel) {
+                         correctLabel.classList.add('bg-green-100', 'border-green-600', 'font-semibold');
+                         correctLabel.classList.remove('border-gray-300');
+                    }
+                    
+                    // Disable all interactions after submit
+                    if (questionCard) {
+                        questionCard.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(input => input.disabled = true);
+                    }
+                });
+
+                // --- HIGH SCORE UPDATE ---
+                const updatedHighScore = await window.updateHighScoreInCloud(selectedPaper, totalScore);
+                const scorePercentage = (totalScore / TOTAL_MARKS) * 100;
+                // --- END HIGH SCORE UPDATE ---
+
+
+                const resultDiv = document.getElementById('score-result');
+                
+                let confettiMessage = '';
+                if (totalScore >= updatedHighScore) {
+                    confettiMessage = `<span class="text-green-700 font-bold">New High Score! ${updatedHighScore}/${TOTAL_MARKS} 🎉</span>`;
+                    fireConfetti(scorePercentage);
+                } else {
+                    confettiMessage = `Previous High Score: <span class="text-amber-700 font-bold">${updatedHighScore}/${TOTAL_MARKS}</span>`;
+                }
+
+                resultDiv.innerHTML = `
+                    <h3 class="text-3xl font-extrabold text-gray-800 mb-4">Test Results for Paper ${selectedPaper}</h3>
+                    <p class="text-2xl text-gray-700 mb-3">
+                        Your Score: <span class="font-bold text-teal-700">${totalScore} / ${TOTAL_MARKS} Marks</span>
+                    </p>
+                    <p class="text-lg text-gray-600 mt-2">
+                        Correct Answers: <span class="font-bold text-teal-700">${correctCount} / ${TOTAL_QUESTIONS} Questions</span>
+                    </p>
+                    <div class="mt-4 p-3 bg-amber-100 rounded-lg">${confettiMessage}</div>
+                    <p class="mt-4 text-sm text-gray-700">
+                        Review the test above: <span class="text-green-600 font-semibold">Green box/text</span> highlights the correct answer.
+                    </p>
+                `;
+                resultDiv.classList.remove('hidden');
+                
+                resultDiv.scrollIntoView({ behavior: 'smooth' });
+            }
+            
+            // --- Paper Selection Rendering ---
+            async function renderPaperSelection() {
+                const grid = document.getElementById('paper-selection-grid');
+                let html = '';
+                
+                // Render all 10 hardcoded papers
+                const totalPapers = 10; 
+
+                for (let i = 1; i <= totalPapers; i++) {
+                    const testId = `imo_paper_${i}_session`;
+                    const state = await window.loadStateFromCloud(testId);
+                    const highScore = await window.getHighScoreFromCloud(i);
+                    
+                    let statusText = 'New Test';
+                    let statusColor = 'bg-teal-500'; 
+                    let actionText = 'Start Paper';
+                    let titleText = `Practice Paper ${i}`;
+                    let description = i === 1 ? 'Original fixed set.' : `Unique fixed set (Paper ${i}).`;
+                    let highscoreTextColor = highScore > 0 ? 'text-amber-600' : 'text-gray-500';
+
+
+                    if (state && state.timeInSeconds < TOTAL_TIME_SECONDS && state.timeInSeconds > 0) {
+                         const minutesLeft = Math.floor(state.timeInSeconds / 60);
+                         statusText = `${minutesLeft} mins left`;
+                         statusColor = 'bg-orange-500';
+                         actionText = 'Resume Paper';
+                    } else if (state && state.completed === true) {
+                         statusText = 'Completed';
+                         statusColor = 'bg-gray-500';
+                         actionText = 'Review'; 
+                    }
+                    
+                    const buttonColor = statusColor;
+
+                    html += `
+                        <div class="paper-select-card cursor-pointer p-4 rounded-xl shadow-lg border-b-4 border-teal-600" data-paper="${i}">
+                            <div class="flex justify-between items-center mb-1">
+                                <h3 class="text-xl font-bold text-gray-800">${titleText}</h3>
+                                <div class="text-xs font-semibold px-2 py-1 rounded-full text-white ${statusColor} shadow-md">${statusText}</div>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1 mb-2">
+                                Highest Score: <span class="${highscoreTextColor} font-bold">${highScore}/${TOTAL_MARKS}</span>
+                            </p>
+                            <button class="w-full text-white ${buttonColor} py-2 rounded-lg font-semibold text-sm transition hover:opacity-90">
+                                ${actionText}
+                            </button>
+                        </div>
+                    `;
+                }
+                grid.innerHTML = html;
+
+                grid.querySelectorAll('.paper-select-card').forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        const paperNum = parseInt(card.dataset.paper);
+                        const isResuming = card.querySelector('button').textContent.includes('Resume');
+                        initializeTestUI(paperNum, isResuming);
+                    });
+                });
+            }
+
+
+            // --- Start-up & Event Attachments ---
+            window.addEventListener('firebaseReady', async () => {
+                // Attach Confirmation Modal Handlers
+                document.getElementById('confirm-submit').addEventListener('click', handleConfirmedSubmit);
+                document.getElementById('cancel-submit').addEventListener('click', hideConfirmationModal);
+                
+                // Attach Error Modal Handler
+                document.getElementById('reload-selection').addEventListener('click', returnToSelection);
+                
+                renderPaperSelection();
+            });
+        </script>
+    </div>
+</body>
+</html>
