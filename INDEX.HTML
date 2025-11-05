@@ -205,14 +205,14 @@
             setLogLevel('Debug');
 
             // --- MANUAL REPLACEMENT FOR GITHUB/EXTERNAL HOSTING (REQUIRED) ---
-            // !!! YOU MUST REPLACE ALL "YOUR_..." PLACEHOLDERS WITH YOUR REAL FIREBASE KEYS !!!
+            // The configuration block is now using your specific project keys.
             const firebaseConfig = {
-              apiKey: "AIzaSyDhA2aJwvSjKPvuyMdnyPE03hcT25qbg5k", // <-- 1. PASTE YOUR API KEY HERE
-              authDomain: "imo-practice-app-e502b.firebaseapp.com", // <-- 2. PASTE YOUR AUTH DOMAIN HERE
-              projectId: "imo-practice-app-e502b", // <-- 3. PASTE YOUR PROJECT ID HERE
-              storageBucket: "imo-practice-app-e502b.firebasestorage.app", // <-- 4. PASTE YOUR STORAGE BUCKET HERE
-              messagingSenderId: "512061955221", // <-- 5. PASTE YOUR SENDER ID HERE
-              appId: "1:512061955221:web:a2472ada556fd587e54f9c" // <-- 6. PASTE YOUR APP ID HERE
+              apiKey: "AIzaSyDhA2aJwvSjKPvuyMdnyPE03hcT25qbg5k", 
+              authDomain: "imo-practice-app-e502b.firebaseapp.com", 
+              projectId: "imo-practice-app-e502b", 
+              storageBucket: "imo-practice-app-e502b.firebasestorage.app", 
+              messagingSenderId: "512061955221", 
+              appId: "1:512061955221:web:a2472ada556fd587e54f9c" 
             };
             
             // For GitHub deployment, we use the projectId as the unique app identifier (appId) 
@@ -228,7 +228,7 @@
             // --- Firebase Initialization and Auth ---
             async function initializeFirebase() {
                 try {
-                    // Check if configuration is missing (only for external hosting)
+                    // Check if configuration is missing (This check now passes as keys are provided)
                     if (firebaseConfig.apiKey === "YOUR_API_KEY_HERE" || !firebaseConfig.projectId) {
                         document.getElementById('auth-status').textContent = "ERROR: Firebase Config is missing! Please replace placeholders in the code.";
                         window.showErrorModal("Firebase Setup Required: Please edit the code file and replace all 'YOUR_...' placeholders with your actual keys from the Firebase Console.");
